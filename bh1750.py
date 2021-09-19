@@ -89,7 +89,7 @@ class ShellCMD(object):
       result=(Lx*1024)/160
       return result
 
-    def GetLight(xLevel):
+    def GetLight(self,xLevel):
       yLevel=self.LxToY(xLevel)
       lightLevel = self.mcmd+str(yLevel)
       self.GetShell(lightLevel)
