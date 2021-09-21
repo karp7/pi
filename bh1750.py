@@ -87,6 +87,8 @@ class ShellCMD(object):
 # функція відповідності освітлення в 0-1024
     def LxToY(self,Lx):
       result=(Lx*1024)/160
+      if result<400:
+        result=400
       return result
 
     def GetLight(self,xLevel):
