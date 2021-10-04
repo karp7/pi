@@ -19,6 +19,8 @@
 import smbus
 import time
 import subprocess
+import csv
+import datetime
 
 #from rpi_backlight import Backlight
 
@@ -62,11 +64,35 @@ def readLight(addr=DEVICE):
   return convertToNumber(data)
 
 
-class ShellCMD(object):
-    def __init__(self,mcmd, icmd_ls):
+    def __init__(self, shell_cmd, step_max, processing_method):
         super(ShellCMD, self).__init__()
-        self.mcmd = mcmd
-        self.GetShells(icmd_ls)
+        self.icmd_ls = shell_cmd[0]
+        self.start_cmd=shell_cmd[1]
+        self.GetShells(self.icmd_ls)
+
+        self.logFILENAME = "display_log.csv"
+        vparam=['DateTime','InputLx','lightLevel','SetToDisplaylightLevel','Errors']
+        self.addToFile(vparam)
+
+
+        self.step=0
+
+# processing_method приймає значення назв функцій з обробки сигналів: ideal, average
+        # self.processing_method='self.'+processing_method
+        self.processing_method=processing_method
+
+        self.step_max=step_max
+        self.listYforStep=[]      
+
+
+    def addToFile(self,log):     
+        try:
+            with open(self.logFILENAME, "a", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerows([log]) 
+        except:
+            print("Помилка запису в файл",self.logFILENAME)
+        pass
 
 
     def GetShells(self,cmd_ls):
@@ -76,13 +102,15 @@ class ShellCMD(object):
         pass
 
     def GetShell(self,cmd):
-
+        error = ''
         try:
             err = subprocess.run(cmd.split())
+            
             # print("l_Level=",", err=",err.returncode)
         except:
-            print("Помилка команди",cmd)
-        pass
+            error="Помилка команди: "+cmd
+            print(error)
+        return error
 
 # функція відповідності освітлення в 0-1024
     def LxToY(self,Lx):
@@ -91,28 +119,73 @@ class ShellCMD(object):
         result=400
       return result
 
-    def GetLight(self,xLevel):
+
+# середньо статистичний метод обробки
+    def average(self):
+
+        y=self.input_y
+        sumY=0
+        for y_i in self.listYforStep:
+            sumY+=y_i
+
+        y= sumY/self.step
+
+        return y     
+
+    def Calc_Signal(self): # цільова функція
+        method=getattr(self, self.processing_method)
+        return method()
+
+
+    def GetLevelFromDisplay(ylevel):
+      lightLevel=''
+      shellError=''
+      self.step+=1
+      self.listYforStep.append(ylevel)
+
+      if (self.step>=self.step_max) :
+ 
+        lightLevel=str(self.Calc_Signal())
+        cmd=self.start_cmd+' '+lightLevel
+        shellError=self.GetShell(cmd)
+        self.step=0
+        self.listYforStep=[]
+
+      return lightLevel, shellError
+
+    def SetLight(self,xlevel):
       yLevel=self.LxToY(xLevel)
-      lightLevel = self.mcmd+str(yLevel)
-      self.GetShell(lightLevel)
+      log=['','','','']
+      x = datetime.datetime.now()
+      
+      log[0]=x.strftime("%d-%m-%Y %H:%M:%S")
+      log[1]=str(xlevel)
+      log[2]=str(ylevel)
+      log[3],log[4]= GetLevelFromDisplay(ylevel)
 
 
+      self.addToFile(log)
+
+
+
+
+      pass
 
 
 def main():
-  icmd=[
-          'gpio -g pwm 18 1024',
-          'gpio -g mode 18 pwm',
-          'gpio pwmc 1000',
-      ]
-  mcmd='gpio -g pwm 18 '
-
-  Display=ShellCMD(mcmd, icmd)
+  shell_cmd=[
+                  ['gpio -g pwm 18 1024',
+                  'gpio -g mode 18 pwm',
+                  'gpio pwmc 1000'],
+                  'gpio -g pwm 18 '
+              ]
+  step_max = 10
+  processing_method = 'average'
+  Display=ShellCMD(shell_cmd, step_max, processing_method)
   while True:
     lightLevel=readLight()
     print("Light Level : " + format(lightLevel,'.2f') + " lx")
-
-    Display.GetLight(lightLevel)
+    Display.SetLight(lightLevel)
 
     time.sleep(0.5)
 
