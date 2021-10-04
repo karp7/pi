@@ -63,7 +63,7 @@ def readLight(addr=DEVICE):
   data = bus.read_i2c_block_data(addr,ONE_TIME_HIGH_RES_MODE_1)
   return convertToNumber(data)
 
-
+class ShellCMD(object):
     def __init__(self, shell_cmd, step_max, processing_method):
         super(ShellCMD, self).__init__()
         self.icmd_ls = shell_cmd[0]
@@ -123,7 +123,6 @@ def readLight(addr=DEVICE):
 # середньо статистичний метод обробки
     def average(self):
 
-        y=self.input_y
         sumY=0
         for y_i in self.listYforStep:
             sumY+=y_i
@@ -137,7 +136,7 @@ def readLight(addr=DEVICE):
         return method()
 
 
-    def GetLevelFromDisplay(ylevel):
+    def GetLevelFromDisplay(self,ylevel):
       lightLevel=''
       shellError=''
       self.step+=1
@@ -154,14 +153,14 @@ def readLight(addr=DEVICE):
       return lightLevel, shellError
 
     def SetLight(self,xlevel):
-      yLevel=self.LxToY(xLevel)
-      log=['','','','']
+      ylevel=self.LxToY(xlevel)
+      log=['','','','','']
       x = datetime.datetime.now()
       
       log[0]=x.strftime("%d-%m-%Y %H:%M:%S")
       log[1]=str(xlevel)
       log[2]=str(ylevel)
-      log[3],log[4]= GetLevelFromDisplay(ylevel)
+      log[3],log[4]= self.GetLevelFromDisplay(ylevel)
 
 
       self.addToFile(log)
@@ -183,7 +182,7 @@ def main():
   processing_method = 'average'
   Display=ShellCMD(shell_cmd, step_max, processing_method)
   while True:
-    lightLevel=readLight()
+    lightLevel=100 #readLight()
     print("Light Level : " + format(lightLevel,'.2f') + " lx")
     Display.SetLight(lightLevel)
 
