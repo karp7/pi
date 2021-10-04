@@ -182,7 +182,8 @@ def main():
   processing_method = 'average'
   Display=ShellCMD(shell_cmd, step_max, processing_method)
   while True:
-    lightLevel=100 #readLight()
+#    lightLevel=100 # перевірка
+    lightLevel=readLight()
     print("Light Level : " + format(lightLevel,'.2f') + " lx")
     Display.SetLight(lightLevel)
 
